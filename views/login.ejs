@@ -1,0 +1,32 @@
+<%- include('partials/header') %>
+
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4">
+        
+        <div class="text-center mb-4">
+            <h2 class="fw-bold" style="color: #4f46e5;">LogAnalyzer</h2>
+            <p class="text-muted">System zgłoszeniowy Helpdesk</p>
+        </div>
+
+        <div class="card shadow border-0" style="border-radius: 16px;">
+            <div class="card-body p-4 p-md-5">
+                <h4 class="card-title text-center mb-4 fw-bold">Logowanie</h4>
+                
+                <form action="/login" method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label text-muted small fw-bold">Nazwa użytkownika</label>
+                        <input type="text" class="form-control bg-light border-0 py-2" id="username" name="username" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="password" class="form-label text-muted small fw-bold">Hasło</label>
+                        <input type="password" class="form-control bg-light border-0 py-2" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-custom w-100 rounded-pill py-2 fw-bold" style="background-color: #4f46e5; color: white;">Zaloguj się</button>
+                </form>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

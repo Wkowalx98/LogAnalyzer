@@ -1,0 +1,256 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="row justify-content-center">
+    <div class="col-md-9"> <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold mb-0">Szczegóły Zgłoszenia #<%= ticket._id.toString().substring(18, 24) %></h2>
+            <a href="/tickets" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm">← Wróć do listy</a>
+        </div>
+
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center p-4 border-0" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <div>
+                    <span class="fs-4 fw-bold"><%= ticket.title %></span><br>
+                    
+                    <div class="mt-2 pt-2 border-top border-secondary border-opacity-50">
+                        <small class="text-white-50">Zgłaszający: </small>
+                        <strong class="text-light"><%= ticket.authorId.username %></strong>
+                        <% if (ticket.authorId.email) { %>
+                            <span class="text-white-50 ms-2">| <%= ticket.authorId.email %></span>
+                        <% } %>
+                        <% if (ticket.authorId.phone) { %>
+                            <span class="text-white-50 ms-2">| <%= ticket.authorId.phone %></span>
+                        <% } %>
+                    </div>
+
+                    <div class="mt-1">
+                        <small class="text-white-50">Przypisane do: </small>
+                        <% if (ticket.assignedTo) { %>
+                            <span class="badge bg-light text-dark ms-1"><%= ticket.assignedTo.username %></span>
+                        <% } else { %>
+                            <span class="badge bg-warning text-dark ms-1">Brak (Oczekuje na przypisanie)</span>
+                        <% } %>
+                    </div>
+                </div>
+                
+                <div class="text-end">
+                    <div class="mb-2">
+                        <% if (ticket.status === 'Nowe') { %>
+                            <span class="badge bg-primary rounded-pill px-3 py-2"><%= ticket.status %></span>
+                        <% } else if (ticket.status === 'W trakcie realizacji') { %>
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><%= ticket.status %></span>
+                        <% } else { %>
+                            <span class="badge bg-success rounded-pill px-3 py-2"><%= ticket.status %></span>
+                        <% } %>
+                    </div>
+
+                    <% if (user.role === 'admin' && !ticket.assignedTo) { %>
+                        <form action="/tickets/<%= ticket._id %>/assign" method="POST" class="m-0 mt-2">
+                            <button type="submit" class="btn btn-sm btn-outline-light rounded-pill fw-bold shadow-sm">✋ Przejmij zgłoszenie</button>
+                        </form>
+                    <% } %>
+                </div>
+            </div>
+            
+            <div class="row mb-4 g-3 text-center">
+                <div class="col-md-4">
+                    <div class="bg-white p-3 rounded-4 shadow-sm h-100 d-flex flex-column justify-content-center">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Status</small>
+                        <span class="fw-bold fs-5"><%= ticket.status %></span>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="bg-white p-3 rounded-4 shadow-sm h-100 d-flex flex-column justify-content-center">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Priorytet</small>
+                        <span class="fw-bold fs-5 <%= ticket.priority === 'Krytyczny' ? 'text-danger' : 'text-primary' %>">
+                            <%= ticket.priority %>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="bg-white p-3 rounded-4 shadow-sm h-100 d-flex flex-column justify-content-center">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.7rem;">Czas na realizację (SLA)</small>
+                        <div id="sla-timer" class="fw-bold fs-5">
+                            <span class="text-muted fs-6">Obliczanie...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <h6 class="text-muted fw-bold text-uppercase small mb-2">Opis problemu</h6>
+                <p class="bg-light p-3 rounded-4 border-0 fs-6"><%= ticket.description %></p>
+                
+                <% if (ticket.attachedLogName) { %>
+                    <hr class="my-4 text-muted opacity-25">
+                    <h6 class="text-muted fw-bold text-uppercase small mb-3">Analiza załączonych logów</h6>
+                    
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="bg-light px-3 py-2 rounded-3 border-start border-4 border-secondary flex-grow-1">
+                            <small class="text-muted d-block">Załączony plik</small>
+                            <strong><%= ticket.attachedLogName %></strong>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 px-3 py-2 rounded-3 border-start border-4 border-danger">
+                            <small class="text-danger d-block fw-bold">Błędy (ERROR)</small>
+                            <strong class="text-danger fs-5"><%= ticket.errorCount %></strong>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 px-3 py-2 rounded-3 border-start border-4 border-warning">
+                            <small class="text-warning text-dark d-block fw-bold">Ostrzeżenia (WARN)</small>
+                            <strong class="text-dark fs-5"><%= ticket.warningCount %></strong>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between align-items-end mb-2">
+                            <label class="fw-bold text-muted mb-0">Podgląd zawartości pliku:</label>
+                            <div class="btn-group btn-group-sm shadow-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary active fw-bold" id="btnFilterAll" onclick="filterLogs('ALL')">Wszystkie</button>
+                                <button type="button" class="btn btn-outline-danger fw-bold" id="btnFilterErrors" onclick="filterLogs('ERROR')">Tylko [ERROR]</button>
+                                <button type="button" class="btn btn-outline-warning text-dark fw-bold" id="btnFilterWarnings" onclick="filterLogs('WARNING')">Tylko [WARN]</button>
+                            </div>
+                        </div>
+                        <pre id="logPreviewWindow" class="bg-dark text-light p-3 rounded-4 border-0 shadow-inner" style="max-height: 350px; overflow-y: auto; font-size: 0.85rem;"><%= ticket.rawLogContent %></pre>
+                    </div>
+                <% } %>
+            </div>
+            <div class="card-footer bg-white border-top-0 text-muted small px-4 pb-4" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                Utworzono: <%= ticket.createdAt.toLocaleString('pl-PL') %>
+            </div>
+        </div>
+
+        <% if (user.role === 'admin' && typeof similarTickets !== 'undefined' && similarTickets.length > 0) { %>
+            <div class="card border-0 shadow-sm mb-4" style="background-color: #f8f9fa; border-left: 4px solid #4f46e5 !important; border-radius: 12px;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3" style="color: #4f46e5;">
+                        Automatyczna Analiza: Znaleziono podobne problemy
+                    </h6>
+                    <p class="text-muted small mb-3">System przeanalizował załączony log i wykrył, że podobny błąd wystąpił w przeszłości. Poniżej znajdują się sprawdzone rozwiązania:</p>
+                    
+                    <div class="d-flex flex-column gap-3">
+                        <% similarTickets.forEach(function(simTicket) { %>
+                            <div class="bg-white p-3 rounded-3 border shadow-sm">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <strong class="text-dark"><%= simTicket.title %></strong>
+                                    <a href="/tickets/<%= simTicket._id %>" class="text-decoration-none small fw-bold" style="color: #4f46e5;" target="_blank">Otwórz #<%= simTicket._id.toString().substring(18, 24) %></a>
+                                </div>
+                                <div class="bg-light p-2 rounded-3 small border-start border-success border-3">
+                                    <strong class="text-success">Gotowe rozwiązanie:</strong><br>
+                                    <%= simTicket.resolution %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+
+        <% if (ticket.resolution) { %>
+            <div class="card border-0 shadow-sm mb-4 bg-success bg-opacity-10" style="border-radius: 16px;">
+                <div class="card-body p-4">
+                    <h6 class="text-success fw-bold text-uppercase small mb-2">Wdrożone Rozwiązanie</h6>
+                    <p class="mb-0 fs-5 text-dark"><%= ticket.resolution %></p>
+                </div>
+            </div>
+        <% } %>
+
+        <% if (user.role === 'admin') { %>
+            <div class="card border-0 shadow-sm mb-5" style="border-radius: 16px;">
+                <div class="card-header bg-white border-0 pt-4 px-4" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                    <h5 class="fw-bold mb-0 text-primary">Narzędzia Technika</h5>
+                    <p class="text-muted small mb-0 mt-1">Dodaj rozwiązanie i zmień status zgłoszenia.</p>
+                </div>
+                <div class="card-body p-4">
+                    <form action="/tickets/<%= ticket._id %>/resolve" method="POST">
+                        <div class="mb-3">
+                            <label for="resolution" class="form-label text-muted small fw-bold">Treść rozwiązania / Notatka:</label>
+                            <textarea class="form-control bg-light border-0 py-3" id="resolution" name="resolution" rows="3" placeholder="Opisz, co zostało naprawione lub co jest do zrobienia..." required><%= ticket.resolution || '' %></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label for="status" class="form-label text-muted small fw-bold">Zmień status:</label>
+                            <select class="form-select bg-light border-0 py-2" id="status" name="status">
+                                <option value="Nowe" <%= ticket.status === 'Nowe' ? 'selected' : '' %>>Nowe</option>
+                                <option value="W trakcie realizacji" <%= ticket.status === 'W trakcie realizacji' ? 'selected' : '' %>>W trakcie realizacji</option>
+                                <option value="Rozwiązane" <%= ticket.status === 'Rozwiązane' ? 'selected' : '' %>>Rozwiązane</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-custom w-100 rounded-pill py-3 fw-bold shadow-sm" style="background-color: #4f46e5; color: white; border: none;">Zapisz zmiany w zgłoszeniu</button>
+                    </form>
+                </div>
+            </div>
+        <% } %>
+
+    </div>
+</div>
+
+<script>
+    const logPreviewElement = document.getElementById('logPreviewWindow');
+    let originalLogs = "";
+    
+    if (logPreviewElement) {
+        originalLogs = logPreviewElement.innerText;
+    }
+
+    function filterLogs(type) {
+        if (!logPreviewElement) return;
+
+        // Resetowanie klas przycisków
+        document.getElementById('btnFilterAll').classList.remove('active');
+        document.getElementById('btnFilterErrors').classList.remove('active');
+        document.getElementById('btnFilterWarnings').classList.remove('active');
+
+        const lines = originalLogs.split('\n');
+        let filteredLogs = [];
+
+        if (type === 'ALL') {
+            document.getElementById('btnFilterAll').classList.add('active');
+            logPreviewElement.innerText = originalLogs;
+            return;
+        } 
+        
+        if (type === 'ERROR') {
+            document.getElementById('btnFilterErrors').classList.add('active');
+            filteredLogs = lines.filter(line => line.toUpperCase().includes('[ERROR]'));
+        } 
+        
+        if (type === 'WARNING') {
+            document.getElementById('btnFilterWarnings').classList.add('active');
+            filteredLogs = lines.filter(line => line.toUpperCase().includes('[WARNING]'));
+        }
+
+        if (filteredLogs.length > 0) {
+            logPreviewElement.innerText = filteredLogs.join('\n');
+        } else {
+            logPreviewElement.innerText = `Brak wpisów typu [${type}] w tym pliku.`;
+        }
+    }
+
+    function updateSLA() {
+        const deadline = new Date("<%= ticket.deadline %>").getTime();
+        const now = new Date().getTime();
+        const diff = deadline - now;
+
+        const timerElement = document.getElementById('sla-timer');
+        
+        if ("<%= ticket.status %>" === "Rozwiązane") {
+            timerElement.innerHTML = '<span class="text-success">Zakończono w terminie</span>';
+            return;
+        }
+
+        if (diff < 0) {
+            timerElement.innerHTML = '<span class="text-danger"> przekroczono SLA!</span>';
+            return;
+        }
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        let colorClass = hours < 2 ? 'text-danger' : 'text-dark';
+        timerElement.innerHTML = `<span class="${colorClass}">⏱ ${hours}h ${minutes}m</span>`;
+    }
+    
+    updateSLA();
+    setInterval(updateSLA, 60000);
+</script>
+
+<%- include('partials/footer') %>

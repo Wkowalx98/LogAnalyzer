@@ -1,0 +1,161 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+    <div>
+        <h2 class="mb-1 fw-bold">
+            <%= user.role === 'admin' ? 'Wszystkie Zgłoszenia' : 'Historia Zgłoszeń' %>
+        </h2>
+        <p class="text-muted mb-0">Przeglądaj i zarządzaj zgłoszeniami w systemie.</p>
+    </div>
+    
+    <button type="button" class="btn btn-custom px-4 py-2 rounded-pill shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#newTicketModal">
+        + Zgłoś Nowy Problem
+    </button>
+</div>
+
+<% if (user.role === 'admin') { %>
+
+    <h5 class="fw-bold mb-3 text-primary">Zgłoszenia do podjęcia (Nieprzypisane)</h5>
+    <div class="card shadow-sm mb-5 border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3">Tytuł Zgłoszenia</th>
+                        <th class="py-3">Status</th>
+                        <th class="py-3">Data</th>
+                        <th class="text-end pe-4 py-3">Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (unassignedTickets.length === 0) { %>
+                        <tr><td colspan="4" class="text-center py-4 text-muted">Brak nowych zgłoszeń w kolejce!</td></tr>
+                    <% } else { %>
+                        <% unassignedTickets.forEach(function(ticket) { %>
+                            <tr>
+                                <td class="ps-4 py-3 fw-bold text-dark"><%= ticket.title %></td>
+                                <td class="py-3"><span class="badge bg-primary rounded-pill px-3 py-2"><%= ticket.status %></span></td>
+                                <td class="text-muted py-3"><%= ticket.createdAt ? ticket.createdAt.toLocaleDateString('pl-PL') : '-' %></td>
+                                <td class="text-end pe-4 py-3"><a href="/tickets/<%= ticket._id %>" class="btn btn-sm btn-light text-primary fw-bold rounded-pill px-3 border">Otwórz</a></td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <h5 class="fw-bold mb-3 text-success">Zgłoszenia w realizacji</h5>
+    
+    <% if (Object.keys(groupedByTech).length === 0) { %>
+        <p class="text-muted">Nikt nie ma obecnie przypisanych zadań.</p>
+    <% } else { %>
+        <div class="accordion shadow-sm rounded-4 mb-4" id="techAccordion">
+            <% Object.keys(groupedByTech).forEach(function(techName, index) { %>
+                <div class="accordion-item border-0 border-bottom">
+                    <h2 class="accordion-header" id="heading<%= index %>">
+                        <button class="accordion-button <%= index !== 0 ? 'collapsed' : '' %> fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= index %>">
+                            Technik: <span class="text-primary ms-2"><%= techName %></span> 
+                            <span class="badge bg-secondary rounded-pill ms-3"><%= groupedByTech[techName].length %> zadań</span>
+                        </button>
+                    </h2>
+                    <div id="collapse<%= index %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" data-bs-parent="#techAccordion">
+                        <div class="accordion-body p-0">
+                            <table class="table table-hover align-middle m-0">
+                                <tbody>
+                                    <% groupedByTech[techName].forEach(function(ticket) { %>
+                                        <tr>
+                                            <td class="ps-4 py-3 fw-bold"><%= ticket.title %></td>
+                                            <td class="py-3">
+                                                <% if (ticket.status === 'W trakcie realizacji') { %>
+                                                    <span class="badge bg-warning text-dark rounded-pill"><%= ticket.status %></span>
+                                                <% } else { %>
+                                                    <span class="badge bg-success rounded-pill"><%= ticket.status %></span>
+                                                <% } %>
+                                            </td>
+                                            <td class="text-end pe-4 py-3"><a href="/tickets/<%= ticket._id %>" class="text-decoration-none fw-bold" style="color: #4f46e5;">Szczegóły</a></td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+
+<% } else { %>
+
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3">Tytuł Zgłoszenia</th>
+                        <th class="py-3">Status</th>
+                        <th class="py-3">Data</th>
+                        <th class="text-end pe-4 py-3">Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (tickets.length === 0) { %>
+                        <tr><td colspan="4" class="text-center py-5 text-muted">Nie masz jeszcze żadnych zgłoszeń.</td></tr>
+                    <% } else { %>
+                        <% tickets.forEach(function(ticket) { %>
+                            <tr>
+                                <td class="ps-4 py-3 fw-bold text-dark"><%= ticket.title %></td>
+                                <td class="py-3">
+                                    <% if (ticket.status === 'Nowe') { %>
+                                        <span class="badge bg-primary rounded-pill px-3 py-2"><%= ticket.status %></span>
+                                    <% } else if (ticket.status === 'W trakcie realizacji') { %>
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><%= ticket.status %></span>
+                                    <% } else { %>
+                                        <span class="badge bg-success rounded-pill px-3 py-2"><%= ticket.status %></span>
+                                    <% } %>
+                                </td>
+                                <td class="text-muted py-3"><%= ticket.createdAt ? ticket.createdAt.toLocaleDateString('pl-PL') : '-' %></td>
+                                <td class="text-end pe-4 py-3"><a href="/tickets/<%= ticket._id %>" class="btn btn-sm btn-light text-primary fw-bold rounded-pill px-3 border">Otwórz</a></td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<% } %>
+
+<div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold fs-4" id="newTicketModalLabel">Zgłoś Nowy Problem</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form action="/tickets" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="title" class="form-label text-muted small fw-bold">Temat zgłoszenia</label>
+                        <input type="text" class="form-control bg-light border-0 py-2" id="title" name="title" placeholder="np. Błąd przy logowaniu" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label text-muted small fw-bold">Opis problemu</label>
+                        <textarea class="form-control bg-light border-0 py-2" id="description" name="description" rows="4" placeholder="Opisz dokładnie, kiedy występuje błąd..." required></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="logfile" class="form-label text-muted small fw-bold">Załącz plik logów (Opcjonalnie)</label>
+                        <input class="form-control bg-light border-0 form-control-sm" type="file" id="logfile" name="logfile" accept=".txt,.log">
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-light px-4 rounded-pill fw-bold" data-bs-dismiss="modal">Anuluj</button>
+                        <button type="submit" class="btn btn-custom px-4 rounded-pill fw-bold">Wyślij Zgłoszenie</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

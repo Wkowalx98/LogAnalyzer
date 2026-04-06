@@ -1,0 +1,204 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<% if (user.role === 'admin') { %>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4 fw-bold">Panel Technika</h2>
+        </div>
+    </div>
+
+    <div class="row mt-2 g-4">
+        
+        <div class="col-md-5">
+            <div class="card shadow-sm h-100 border-0" style="border-radius: 16px;">
+                <div class="card-header bg-white border-0 pt-4 px-4" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                    <h5 class="fw-bold mb-0 text-primary">Obciążenie Helpdesku</h5>
+                </div>
+                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+                    <div style="width: 220px; height: 220px;">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                    <div class="mt-4 w-100 text-center">
+                        <a href="/tickets" class="btn btn-outline-primary w-100 rounded-pill fw-bold shadow-sm">Przejdź do zgłoszeń</a>
+                    </div>
+                    
+                    <script>
+                        const ctxStatus = document.getElementById('statusChart').getContext('2d');
+                        new Chart(ctxStatus, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Nowe', 'W trakcie', 'Rozwiązane'],
+                                datasets: [{
+                                    data: [<%= newTickets %>, <%= inProgressTickets %>, <%= closedTickets %>],
+                                    backgroundColor: ['#0d6efd', '#ffc107', '#198754'],
+                                    borderWidth: 0,
+                                    hoverOffset: 4
+                                }]
+                            },
+                            options: {
+                                cutout: '75%',
+                                plugins: { 
+                                    legend: { position: 'bottom', labels: { padding: 20, font: { family: 'Segoe UI' } } } 
+                                }
+                            }
+                        });
+                    </script>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card shadow-sm h-100 border-0" style="border-radius: 16px;">
+                <div class="card-header bg-white border-0 pt-4 px-4" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                    <h5 class="fw-bold mb-0 text-primary">Trendy Błędów (Ostatnie 5 analiz)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <% if (!recentLogs || recentLogs.length === 0) { %>
+                        <p class="text-muted text-center mt-5">Brak przeanalizowanych logów do wyświetlenia na wykresie.</p>
+                    <% } else { %>
+                        <div style="height: 280px; width: 100%;">
+                            <canvas id="logBarChart"></canvas>
+                        </div>
+                        
+                        <script>
+                            const logData = <%- JSON.stringify(recentLogs.map(l => ({ name: l.attachedLogName, err: l.errorCount, warn: l.warningCount }))) %>
+                            logData.reverse();
+
+                            const ctxLogs = document.getElementById('logBarChart').getContext('2d');
+                            new Chart(ctxLogs, {
+                                type: 'bar',
+                                data: {
+                                    labels: logData.map(d => d.name.length > 15 ? d.name.substring(0, 12) + '...' : d.name),
+                                    datasets: [
+                                        { 
+                                            label: 'Błędy [ERROR]', 
+                                            data: logData.map(d => d.err), 
+                                            backgroundColor: '#dc3545', 
+                                            borderRadius: 6 
+                                        },
+                                        { 
+                                            label: 'Ostrzeżenia [WARN]', 
+                                            data: logData.map(d => d.warn), 
+                                            backgroundColor: '#ffc107', 
+                                            borderRadius: 6 
+                                        }
+                                    ]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: { 
+                                        legend: { position: 'bottom', labels: { padding: 20 } } 
+                                    },
+                                    scales: { 
+                                        y: { beginAtZero: true, grid: { borderDash: [5, 5] }, ticks: { precision: 0 } },
+                                        x: { grid: { display: false } }
+                                    }
+                                }
+                            });
+                        </script>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<% } else { %>
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+        <div>
+            <h2 class="mb-1 fw-bold">Twoje Zgłoszenia</h2>
+            <p class="text-muted mb-0">Śledź status swoich analiz i zgłaszaj nowe problemy.</p>
+        </div>
+        <button type="button" class="btn btn-custom px-4 py-2 rounded-pill shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#newTicketModal">
+            + Zgłoś Nowy Problem
+        </button>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4 py-3">Tytuł Zgłoszenia</th>
+                        <th class="py-3">Status</th>
+                        <th class="py-3">Data</th>
+                        <th class="text-end pe-4 py-3">Akcja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (userTickets.length === 0) { %>
+                        <tr><td colspan="4" class="text-center py-5 text-muted">Nie zgłaszałeś jeszcze żadnych problemów.</td></tr>
+                    <% } else { %>
+                        <% userTickets.forEach(function(ticket) { %>
+                            <tr>
+                                <td class="ps-4 py-3 fw-bold text-dark"><%= ticket.title %></td>
+                                <td class="py-3">
+                                    <% if (ticket.status === 'Nowe') { %>
+                                        <span class="badge bg-primary rounded-pill px-3 py-2"><%= ticket.status %></span>
+                                    <% } else if (ticket.status === 'W trakcie realizacji') { %>
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><%= ticket.status %></span>
+                                    <% } else { %>
+                                        <span class="badge bg-success rounded-pill px-3 py-2"><%= ticket.status %></span>
+                                    <% } %>
+                                </td>
+                                <td class="text-muted py-3"><%= ticket.createdAt ? ticket.createdAt.toLocaleDateString('pl-PL') : '-' %></td>
+                                <td class="text-end pe-4 py-3">
+                                    <a href="/tickets/<%= ticket._id %>" class="text-decoration-none fw-bold" style="color: #4f46e5;">Szczegóły</a>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-center bg-white border-0 py-3 rounded-bottom-4">
+            <a href="/tickets" class="text-muted text-decoration-none fw-bold">Zobacz pełną historię zgłoszeń →</a>
+        </div>
+    </div>
+
+    <div class="modal fade" id="newTicketModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header border-0 pb-0 pt-4 px-4">
+                    <h5 class="modal-title fw-bold fs-4">Zgłoś Nowy Problem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form action="/tickets" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="title" class="form-label text-muted small fw-bold">Temat zgłoszenia</label>
+                            <input type="text" class="form-control bg-light border-0 py-2" id="title" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label text-muted small fw-bold">Opis problemu</label>
+                            <textarea class="form-control bg-light border-0 py-2" id="description" name="description" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label for="logfile" class="form-label text-muted small fw-bold">Załącz plik logów (Opcjonalnie)</label>
+                            <input class="form-control bg-light border-0 form-control-sm" type="file" id="logfile" name="logfile" accept=".txt,.log">
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-light px-4 rounded-pill fw-bold" data-bs-dismiss="modal">Anuluj</button>
+                            <button type="submit" class="btn btn-custom px-4 rounded-pill fw-bold">Wyślij Zgłoszenie</button>
+                        </div>
+                        <div class="mb-3">
+                            <label for="priority" class="form-label text-muted small fw-bold">Priorytet zgłoszenia</label>
+                            <select class="form-select bg-light border-0 py-2" id="priority" name="priority">
+                                <option value="Niski">Niski (72h)</option>
+                                <option value="Średni" selected>Średni (24h)</option>
+                                <option value="Wysoki">Wysoki (8h)</option>
+                                <option value="Krytyczny">Krytyczny (4h)</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+<% } %>
+
+<%- include('partials/footer') %>
